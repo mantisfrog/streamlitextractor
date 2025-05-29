@@ -59,6 +59,7 @@ def add_field():
     else:
         st.session_state.fields.append(new_field)
         st.session_state['new_field_input'] = ''
+        st.session_state.process_extract = False
 
 # === Form to add a new field template ===
 with st.form('add_form', clear_on_submit=True):
