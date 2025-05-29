@@ -133,6 +133,9 @@ if st.session_state.process_extract:
         contents=[doc_part, prompt]  # Document content first, then prompt
     )
 
-    # Display the model output
-    st.markdown(response.text)
+    # Display the model output with a highlighted background
+    st.markdown(
+        f"<div style='background-color: #FFFACD; padding: 12px; border-radius: 6px; white-space: pre-wrap;'>{response.text}</div>",
+        unsafe_allow_html=True
+    )
     st.balloons()
