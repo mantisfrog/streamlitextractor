@@ -60,7 +60,12 @@ def add_field():
         st.session_state.fields.append(new_field)
         st.session_state['new_field_input'] = ''
         st.session_state.process_extract = False
-
+# === delete function ===
+def delete_field(idx):
+    # 删除对应索引的字段
+    st.session_state.fields.pop(idx)
+    # 重置提取标志，避免误触
+    st.session_state.process_extract = False
 # === Form to add a new field template ===
 with st.form('add_form', clear_on_submit=True):
     st.subheader('Add Field for Extraction')
@@ -78,7 +83,8 @@ if st.session_state.fields:
         cols[1].button(
             'Delete',
             key=f'delete_{idx}',
-            on_click=lambda i=idx-1: st.session_state.fields.pop(i)
+            on_click=delete_field,
+            args=(idx-1,)
         )
 else:
     st.info('No fields added yet. Please add a field to proceed.')
