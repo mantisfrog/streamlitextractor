@@ -135,5 +135,5 @@ if st.session_state.process_extract:
 
     # Display the model output
     st.divider()
-    st.markdown(response.text)
+    st.success(response.text)
     st.balloons()
