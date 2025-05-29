@@ -120,7 +120,7 @@ if st.session_state.process_extract:
         + "".join(prompt_lines)
         + "\nIf present, summarize the corresponding content under each field. Do not generate a table."
         + "\n\n<Example Output>\n\n"
-        + "### Field Name\n"
+        + "##### Field Name\n"
         + "Field Name Content\n\n"
         + "</Example Output>\n\n"
         + "Note: If a field is not found in the document, write 'NA' under that field.\n"
@@ -134,7 +134,6 @@ if st.session_state.process_extract:
     )
 
     # Display the model output
-    st.markdown('---')
     st.divider()
     st.markdown(response.text)
     st.balloons()
