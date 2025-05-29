@@ -125,12 +125,11 @@ if st.session_state.process_extract:
         "Role: You are a professional document content extraction assistant tasked with extracting specified fields from the uploaded document.\n\n"
         + "Please check the uploaded document for the presence of the following fields:\n\n"
         + "".join(prompt_lines)
-        + "\nIf present, summarize the corresponding content under each field. Do not generate a table."
+        + "\nIf present, summarize the corresponding content under each field. If a field is not found in the document, write 'NA' under that field.\n"
         + "\n\n<Example Output>\n\n"
         + "#### Field Name\n"
         + "Field Name Content\n\n"
         + "</Example Output>\n\n"
-        + "Note: If a field is not found in the document, write 'NA' under that field.\n"
     )
 
     # 3️⃣ Call the GenAI model
