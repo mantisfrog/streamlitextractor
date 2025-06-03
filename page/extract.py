@@ -22,7 +22,7 @@ def initialize_states():
         st.session_state.output_format = "Paragraph"
     if 'word_count' not in st.session_state:
         # 每个字段摘要的最大词数
-        st.session_state.word_count = 100
+        st.session_state.word_count = 30
 
 initialize_states()
 st.title('Contract Agent - Document Content Extraction')
@@ -122,7 +122,7 @@ st.number_input(
     label="Summary Word Count (max words per field)",
     min_value=0,
     max_value=1000,
-    step=10,
+    step=5,
     key="word_count",
     on_change=reset_extract
 )
