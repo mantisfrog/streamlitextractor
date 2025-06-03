@@ -24,19 +24,19 @@ except KeyError:
 
 # === Model Selection ===
 model_mapping = {
-    "Fast": "gemma-3-27b-it",
-    "Balanced": "gemini-2.5-flash-preview-05-20",
+    "Efficiency": "gemma-3-27b-it",
+    "Default": "gemini-2.5-flash-preview-05-20",
     "Best Performance": "gemini-2.5-pro-preview-05-06"
 }
 mode_description = {
-    "Fast": "High speed, supports up to 32 pages, zero token cost",
-    "Balanced": "Balanced performance and cost, 1× token cost",
-    "Best Performance": "For complex tasks, 15× token cost"
+    "Efficiency": "Free model, supports up to 32 pages",
+    "Default": "Balanced performance and cost, 1× token cost",
+    "Best Performance": "Complex reasoning tasks, 15× token cost"
 }
 mode = st.select_slider(
     "Select model performance tier",
     options=list(model_mapping.keys()),
-    value="Fast"
+    value="Default"
 )
 selected_model = model_mapping[mode]
 desc = mode_description[mode]
