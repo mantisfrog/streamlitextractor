@@ -19,9 +19,9 @@ def initialize_states():
         st.session_state.last_result = None
 
 initialize_states()
-st.title('Contract Agent - Document Content Extraction (方案 2)')
+st.title('Contract Agent - Document Content Extraction')
 
-# === 统一的“重置 process_extract”函数 ===
+# === 统一的“重置 process_extract”函数（不清空 prev/last） ===
 def reset_extract():
     st.session_state.process_extract = False
 
@@ -41,7 +41,7 @@ mode = st.select_slider(
     options=list(model_mapping.keys()),
     value="Default",
     key="mode",
-    on_change=reset_extract  # 滑动时只重置 process_extract，不清空 prev/last
+    on_change=reset_extract  # 滑块移动时只重置 process_extract，不动 prev/last
 )
 selected_model = model_mapping[mode]
 desc = mode_description[mode]
@@ -106,7 +106,8 @@ if uploaded_file and st.session_state.fields:
     if st.button('GO Extract'):
         st.session_state.process_extract = True
 
-# === 如果 process_extract=True，就调用 LLM；先把 last 推到 prev，再把本次写到 last ===
+# === 如果 process_extract=True，就调用 LLM；
+#     先把 last 推到 prev，再把本次写到 last ===
 if st.session_state.process_extract:
     st.markdown('---')
     st.subheader('Running Extraction…')
@@ -134,7 +135,7 @@ if st.session_state.process_extract:
         "Role: You are a professional contract administration assistant tasked with extracting specified fields from the uploaded document.\n\n"
         + "Please check the uploaded document for the presence of the following fields:\n\n"
         + "".join(prompt_lines)
-        + "\nIf exist, summarize the corresponding content under each field name. If not, write 'NA' under that field.\n\n"
+        + "\nIf exist, summarize(within 100 word count) the corresponding content under each field name. If not, write 'NA' under that field.\n\n"
         + "<Example Output>\n\n"
         + "#### Field Name\n"
         + "Field Name Content\n\n"
@@ -174,26 +175,21 @@ if st.session_state.process_extract:
     # 提取完成后，把 process_extract 复位
     st.session_state.process_extract = False
 
-# === 渲染 prev_result 与 last_result （仍然用 st.success 输出） ===
-if st.session_state.prev_result or st.session_state.last_result:
+# === 渲染结果：先展示 last_result，再展示 prev_result，仍然用 st.success 输出 ===
+if st.session_state.last_result or st.session_state.prev_result:
     st.markdown('---')
     st.subheader('Extraction History (Last 2 Results)')
 
-    # 如果有 prev_result，就先用 st.success 显示它
-    if st.session_state.prev_result:
-        rec = st.session_state.prev_result
-        st.markdown(
-            f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`"
-        )
-        st.markdown(f"Fields: {rec['fields']}")
-        # 这里仍使用 st.success 来展示上一次的纯文本输出
-        st.success(rec['result_text'])
-
-    # 再用 st.success 显示最新的一条
+    # 先显示“最新一次”
     if st.session_state.last_result:
         rec = st.session_state.last_result
-        st.markdown(
-            f"**Latest Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`"
-        )
+        st.markdown(f"**Latest Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
+        st.markdown(f"Fields: {rec['fields']}")
+        st.success(rec['result_text'])
+
+    # 再显示“上一次”
+    if st.session_state.prev_result:
+        rec = st.session_state.prev_result
+        st.markdown(f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
         st.markdown(f"Fields: {rec['fields']}")
         st.success(rec['result_text'])
