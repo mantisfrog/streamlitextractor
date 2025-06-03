@@ -99,41 +99,28 @@ if st.session_state.fields:
         )
 else:
     st.info('No fields added yet. Please add a field to proceed.')
-# Control Output
-st.markdown('---')
-st.subheader('Output Style')
+st.markdown("---")
+st.subheader("Output Style")
 
-# 让用户在 Paragraph 与 Bullet Points 之间二选一
+# 1. Let the user choose Paragraph vs. Bullet Points:
 st.radio(
-    label='Choose output format:',
-    options=['Paragraph', 'Bullet Points'],
-    index=0,                    # 默认选 Paragraph
-    key='output_format'         # 在后面 prompt 里用 st.session_state['output_format']
+    label="Choose output style:",
+    options=["Paragraph", "Bullet Points"],
+    index=0,                # default to Paragraph
+    key="output_format"
 )
 
-# 为每个 field 单独设定 word count
-st.markdown('**Word Count per Field** (maximum)')
-for field in st.session_state.fields:
-    # key 里不能有空格，这里将 field 名称做简单替换，或自行改成你喜欢的命名规则
-    safe_key = f'wc_{field.replace(" ", "_")}'
-    # 如果想给每个 field 不同默认值，可以把 value=50 改成你想要的逻辑
-    st.number_input(
-        label=f'– {field}',
-        min_value=0,
-        max_value=1000,
-        value=50,
-        step=10,
-        key=safe_key
-    )
-# 之后你可以通过：
-#   st.session_state['output_format']          # 值为 'Paragraph' 或 'Bullet Points'
-#   st.session_state[f'wc_{field.replace(" ", "_")}']  # 对应每个 field 的 word count
-# 在生成 prompt 时拼进去即可。
-
-st.markdown('---')
+# 2. One global word‐count cap (applied to every field summary):
+st.number_input(
+    label="Summary Word Count (max words per field)",
+    min_value=0,
+    max_value=1000,
+    value=210,
+    step=10,
+    key="word_count"
+)
 # === 点击“GO Extract”时：把 process_extract 置 True ===
 if uploaded_file and st.session_state.fields:
-    st.markdown('---')
     if st.button('GO Extract'):
         st.session_state.process_extract = True
 
