@@ -47,7 +47,7 @@ mode = st.select_slider(
     options=list(model_mapping.keys()),
     value="Default",
     key="mode",
-    on_change=reset_extract  # 滑块移动时只重置 process_extract，不动 prev/last
+    on_change=reset_extract,  # 滑块移动时只重置 process_extract，不动 prev/last
     label_visibility="hidden"
 )
 selected_model = model_mapping[mode]
@@ -60,7 +60,7 @@ uploaded_file = st.file_uploader(
     'Upload one document at a time',
     type=['pdf', 'docx'],
     key='uploaded_file',
-    on_change=reset_extract  # 上传/删除文件时只重置 process_extract，不动 prev/last
+    on_change=reset_extract,  # 上传/删除文件时只重置 process_extract，不动 prev/last
     label_visibility='hidden'
 )
 
