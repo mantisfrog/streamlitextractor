@@ -136,8 +136,6 @@ if uploaded_file and st.session_state.fields:
 # === 如果 process_extract=True，就调用 LLM；
 #     先把 last 推到 prev，再把本次写到 last ===
 if st.session_state.process_extract:
-    st.markdown('---')
-
     # 读取文件内容
     file_bytes = st.session_state.uploaded_file.read()
     file_name = st.session_state.uploaded_file.name.lower()
