@@ -110,24 +110,24 @@ else:
 st.markdown('---')
 st.subheader('Output Style')
 
-# 1. 让用户选择 Paragraph 或 Bullet Points
+# 1. 让用户选择 Paragraph 或 Bullet Points，加 on_change
 st.radio(
     label="Choose output style:",
     options=["Paragraph", "Bullet Points"],
     index=0,                # 默认 Paragraph
-    key="output_format"
+    key="output_format",
+    on_change=reset_extract
 )
 
-# 2. 全局 word count 上限（每个字段摘要的最大词数）
+# 2. 全局 word count 上限（每个字段摘要的最大词数），也加 on_change
 st.number_input(
     label="Summary Word Count (max words per field)",
     min_value=0,
     max_value=1000,
     step=10,
-    key="word_count"
+    key="word_count",
+    on_change=reset_extract
 )
-
-st.markdown('---')
 
 # === 点击“GO Extract”时：把 process_extract 置 True ===
 if uploaded_file and st.session_state.fields:
@@ -138,7 +138,6 @@ if uploaded_file and st.session_state.fields:
 #     先把 last 推到 prev，再把本次写到 last ===
 if st.session_state.process_extract:
     st.markdown('---')
-    st.subheader('Running Extraction…')
 
     # 读取文件内容
     file_bytes = st.session_state.uploaded_file.read()
@@ -214,7 +213,7 @@ if st.session_state.process_extract:
 # === 渲染结果：先展示 last_result（最新一次），再展示 prev_result（上一次），使用 st.success 输出 ===
 if st.session_state.last_result or st.session_state.prev_result:
     st.markdown('---')
-    st.subheader('Extraction History (Last 2 Results)')
+    st.subheader('Extraction Results (Last 2 Results)')
 
     # 先显示“最新一次”
     if st.session_state.last_result:
