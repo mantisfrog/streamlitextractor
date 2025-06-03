@@ -60,8 +60,7 @@ uploaded_file = st.file_uploader(
     'Upload one document at a time',
     type=['pdf', 'docx'],
     key='uploaded_file',
-    on_change=reset_extract,  # 上传/删除文件时只重置 process_extract，不动 prev/last
-    label_visibility='hidden'
+    on_change=reset_extract
 )
 
 # === 新增字段的回调函数 ===
@@ -88,8 +87,8 @@ st.markdown('---')
 
 # === 添加字段表单 ===
 with st.form('add_form', clear_on_submit=True):
-    st.subheader('Add Field for Extraction')
-    st.text_input('Field Name', key='new_field_input', label_visibility='hidden')
+    st.subheader('Add Field Name')
+    st.text_input('Build your template', key='new_field_input')
     st.form_submit_button('Add', on_click=add_field)
 
 st.markdown('---')
@@ -115,12 +114,11 @@ st.subheader('Output Style')
 
 # 1. 让用户选择 Paragraph 或 Bullet Points，加 on_change
 st.radio(
-    label="Choose output style:",
+    label="Choose summary style:",
     options=["Paragraph", "Bullet Points"],
     index=0,                # 默认 Paragraph
     key="output_format",
-    on_change=reset_extract,
-    label_visibility='hidden'  # 隐藏标签文本
+    on_change=reset_extract
 )
 
 # 2. 全局 word count 上限（每个字段摘要的最大词数），也加 on_change
