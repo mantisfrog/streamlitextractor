@@ -208,7 +208,6 @@ if st.session_state.process_extract:
 
 # === 渲染结果：先展示 last_result（最新一次），再展示 prev_result（上一次），使用 st.success 输出 ===
 if st.session_state.last_result or st.session_state.prev_result:
-    st.markdown('---')
     st.subheader('Extraction Results')
 
     # 先显示“最新一次”
