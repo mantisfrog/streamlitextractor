@@ -134,16 +134,21 @@ if st.session_state.process_extract:
 
     # 3️⃣ Call the GenAI model
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=selected_model,
-        contents=[doc_part, prompt]  # Document content first, then prompt
-    )
 
+    with st.spinner("Wait for it...", show_time=True):
+        try:
+            response = client.models.generate_content(
+                model=selected_model,
+                contents=[doc_part, prompt]
+            )
+        except Exception as e:
+            st.error(f"Network Error: {e} Please email this message to Brian.")
+            st.stop()
+
+        if getattr(response, "error", None):
+            st.error(f"AI Error: {response.error.message} 1.Try different model. 2.Resources may be insufficient, please email Brian to refuel!")
+            st.stop()
     # Display the model output
     st.divider()
-    with st.spinner("Wait for it...", show_time=True):
-        if response.error:
-            st.error(f"Error: {response.error.message} Please forward this message to Brian!")
-            st.stop() 
     st.success(response.text)
     st.balloons()
