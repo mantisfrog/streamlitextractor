@@ -125,13 +125,13 @@ if st.session_state.process_extract:
     prompt_lines = [f"**{f}**\n" for f in st.session_state.fields]
     prompt = (
         "Role: You are a professional document content extraction assistant tasked with extracting specified fields from the uploaded document.\n\n"
-        + "Please check the uploaded document for the presence of the following fields:\n\n"
+        + "Please check the uploaded document for the presence of the following fields:<br>"
         + "".join(prompt_lines)
-        + "\nIf present, summarize the corresponding content under each field. If not, write 'NA' under that field.\n\n"
-        + "<Example Output>\n\n"
-        + "#### Field Name\n"
-        + "Field Name Content\n\n"
-        + "</Example Output>\n\n"
+        + "<br>If exist, summarize the corresponding content under each field name. If not, write 'NA' under that field.<br>"
+        + "<Example Output>"
+        + "#### Field Name<br>"
+        + "Field Name Content"
+        + "</Example Output>"
     )
 
     client = genai.Client(api_key=st.secrets['GOOGLE_GENAI_API_KEY'])
@@ -150,4 +150,5 @@ if st.session_state.process_extract:
             st.stop()
 
     st.success(response.text)
+    st.text(prompt)
     st.balloons()
