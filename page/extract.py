@@ -118,7 +118,7 @@ st.radio(
     options=["Paragraph", "Bullet Points"],
     index=0,                # 默认 Paragraph
     key="output_format",
-    on_change=reset_extract
+    on_change=reset_extract,
     label_visibility='hidden'  # 隐藏标签文本
 )
 
