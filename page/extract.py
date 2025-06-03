@@ -123,7 +123,6 @@ st.number_input(
     label="Summary Word Count (max words per field)",
     min_value=0,
     max_value=1000,
-    value=st.session_state.word_count,
     step=10,
     key="word_count"
 )
@@ -163,8 +162,19 @@ if st.session_state.process_extract:
     # - st.session_state["word_count"]     # 最大词数
     # 以及 fields、selected_model 等常规信息
     prompt_lines = [f"**{f}**  (max {st.session_state.word_count} words)\n" for f in st.session_state.fields]
-    prompt = ("nothing here"
-)
+    prompt = f"""
+    Role: You are a professional contract administration assistant tasked with extracting specified fields from the uploaded document.
+    Please check the uploaded document for the presence of the following fields:  \n
+    {''.join(prompt_lines)}
+    If present, summarize the corresponding content under each field name according to the chosen output style. If not, write 'NA' under that field.  \n
+
+    Summary Format: {st.session_state.output_format}  \n
+    Word Count of Each 'Field Name Summary': {st.session_state.word_count} words.  \n
+    <Example Output>
+    #### Field Name  \n
+    Field Name Summary
+    </Example Output>
+    """
     # 调用 GenAI
     client = genai.Client(api_key=st.secrets['GOOGLE_GENAI_API_KEY'])
     with st.spinner("Waiting for LLM…", show_time=True):
