@@ -4,19 +4,20 @@ from google.genai import types
 from io import BytesIO
 from docx import Document  # pip install python-docx
 
-# === 初始化 session_state ===
+# === 初始化 session_state（注意：不再手动创建 'uploaded_file'） ===
 def initialize_states():
     if 'fields' not in st.session_state:
         st.session_state.fields = []
     if 'process_extract' not in st.session_state:
         st.session_state.process_extract = False
-    if 'uploaded_file' not in st.session_state:
-        st.session_state.uploaded_file = None
+    # >>> 去掉下面这行就可以了，否则后面 file_uploader 会报 policy 错误
+    # if 'uploaded_file' not in st.session_state:
+    #     st.session_state.uploaded_file = None
 
 initialize_states()
 st.title('Contract Agent - Document Content Extraction')
 
-# === 统一的“重置提取状态”函数 ===
+# === 统一的“重置 process_extract”函数 ===
 def reset_extract():
     st.session_state.process_extract = False
 
@@ -35,8 +36,8 @@ mode = st.select_slider(
     "Select model performance tier",
     options=list(model_mapping.keys()),
     value="Default",
-    key="mode",
-    on_change=reset_extract      # 滑块一旦改变，调用 reset_extract()
+    key="mode",           # 这里给滑块指定 key="mode"
+    on_change=reset_extract
 )
 selected_model = model_mapping[mode]
 desc = mode_description[mode]
@@ -47,8 +48,8 @@ st.subheader('Upload a Document (PDF or DOCX)')
 uploaded_file = st.file_uploader(
     'Upload one document at a time',
     type=['pdf', 'docx'],
-    key='uploaded_file',
-    on_change=reset_extract      # 上传/删除文件时，调用 reset_extract()
+    key='uploaded_file',  # file_uploader 自己在 session_state 里创建 uploaded_file
+    on_change=reset_extract
 )
 
 # === 新增字段的回调函数 ===
@@ -63,14 +64,14 @@ def add_field():
     else:
         st.session_state.fields.append(new_field)
         st.session_state['new_field_input'] = ''
-        reset_extract()  # 调用统一的重置函数
+        reset_extract()    # 统一调用
 
 # === 删除字段的回调函数 ===
 def delete_field(idx):
     st.session_state.fields.pop(idx)
-    reset_extract()      # 调用统一的重置函数
+    reset_extract()       # 统一调用
 
-# === 添加字段的表单 ===
+# === 添加字段表单 ===
 with st.form('add_form', clear_on_submit=True):
     st.subheader('Add Field for Extraction')
     st.text_input('Field Name', key='new_field_input')
@@ -104,10 +105,10 @@ if st.session_state.process_extract:
     st.markdown('---')
     st.subheader('Extraction Results')
 
+    # 直接用 st.session_state.uploaded_file（由 file_uploader 自己管理）
     file_bytes = st.session_state.uploaded_file.read()
     file_name = st.session_state.uploaded_file.name.lower()
 
-    # 根据后缀处理 PDF 或 DOCX
     if file_name.endswith('.pdf'):
         doc_part = types.Part.from_bytes(
             data=file_bytes,
@@ -121,7 +122,6 @@ if st.session_state.process_extract:
         st.error('Only PDF or DOCX formats are supported')
         st.stop()
 
-    # 拼接 prompt
     prompt_lines = [f"**{f}**\n" for f in st.session_state.fields]
     prompt = (
         "Role: You are a professional document content extraction assistant tasked with extracting specified fields from the uploaded document.\n\n"
@@ -134,7 +134,6 @@ if st.session_state.process_extract:
         + "</Example Output>\n\n"
     )
 
-    # 调用 GenAI
     client = genai.Client(api_key=st.secrets['GOOGLE_GENAI_API_KEY'])
     with st.spinner("Wait for it...", show_time=True):
         try:
