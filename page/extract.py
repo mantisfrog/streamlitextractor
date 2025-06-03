@@ -3,19 +3,20 @@ from google import genai
 from google.genai import types
 from io import BytesIO
 from docx import Document  # pip install python-docx
+from datetime import datetime
 
-# === 初始化 session_state（注意：不再手动创建 'uploaded_file'） ===
+# === 初始化 session_state ===
 def initialize_states():
     if 'fields' not in st.session_state:
         st.session_state.fields = []
     if 'process_extract' not in st.session_state:
         st.session_state.process_extract = False
-    # >>> 去掉下面这行就可以了，否则后面 file_uploader 会报 policy 错误
-    # if 'uploaded_file' not in st.session_state:
-    #     st.session_state.uploaded_file = None
+    if 'history' not in st.session_state:
+        # history: 列表，每个元素结构为 {"model":..., "fields":[...], "timestamp":..., "result_text":...}
+        st.session_state.history = []
 
 initialize_states()
-st.title('Contract Agent - Document Content Extraction')
+st.title('Contract Agent - Document Content Extraction (方案 1)')
 
 # === 统一的“重置 process_extract”函数 ===
 def reset_extract():
@@ -36,8 +37,8 @@ mode = st.select_slider(
     "Select model performance tier",
     options=list(model_mapping.keys()),
     value="Default",
-    key="mode",           # 这里给滑块指定 key="mode"
-    on_change=reset_extract
+    key="mode",           # 滑块的键
+    on_change=reset_extract  # 滑动时只重置 process_extract，不影响 history
 )
 selected_model = model_mapping[mode]
 desc = mode_description[mode]
@@ -48,8 +49,8 @@ st.subheader('Upload a Document (PDF or DOCX)')
 uploaded_file = st.file_uploader(
     'Upload one document at a time',
     type=['pdf', 'docx'],
-    key='uploaded_file',  # file_uploader 自己在 session_state 里创建 uploaded_file
-    on_change=reset_extract
+    key='uploaded_file',    # file_uploader 自行创建这个键
+    on_change=reset_extract # 上传/删除文件时只重置 process_extract，不动 history
 )
 
 # === 新增字段的回调函数 ===
@@ -57,19 +58,21 @@ def add_field():
     new_field = st.session_state.get('new_field_input', '').strip()
     if not new_field:
         st.error('Field name cannot be empty')
-    elif new_field in st.session_state.fields:
+        return
+    if new_field in st.session_state.fields:
         st.error('Field already exists')
-    elif len(st.session_state.fields) >= 20:
+        return
+    if len(st.session_state.fields) >= 20:
         st.error('Maximum number of fields reached: 20')
-    else:
-        st.session_state.fields.append(new_field)
-        st.session_state['new_field_input'] = ''
-        reset_extract()    # 统一调用
+        return
+    st.session_state.fields.append(new_field)
+    st.session_state['new_field_input'] = ''
+    reset_extract()  # 只把 process_extract 置 False，不清空 history
 
 # === 删除字段的回调函数 ===
 def delete_field(idx):
     st.session_state.fields.pop(idx)
-    reset_extract()       # 统一调用
+    reset_extract()  # 只把 process_extract 置 False，不清空 history
 
 # === 添加字段表单 ===
 with st.form('add_form', clear_on_submit=True):
@@ -94,18 +97,19 @@ if st.session_state.fields:
 else:
     st.info('No fields added yet. Please add a field to proceed.')
 
-# === 点击“GO Extract”时设置 process_extract 为 True ===
+# === 点击“GO Extract”时：把 process_extract 置 True（不清空 history） ===
 if uploaded_file and st.session_state.fields:
     st.markdown('---')
     if st.button('GO Extract'):
+        # 只把 process_extract 置 True，实际调用放到下面
         st.session_state.process_extract = True
 
-# === 调用 LLM 并展示结果 ===
+# === 如果 process_extract=True，就调用 LLM 并把结果 push 到 history；然后清除标志 ===
 if st.session_state.process_extract:
     st.markdown('---')
-    st.subheader('Extraction Results')
+    st.subheader('Running Extraction…')
 
-    # 直接用 st.session_state.uploaded_file（由 file_uploader 自己管理）
+    # 读取文件内容
     file_bytes = st.session_state.uploaded_file.read()
     file_name = st.session_state.uploaded_file.name.lower()
 
@@ -122,20 +126,22 @@ if st.session_state.process_extract:
         st.error('Only PDF or DOCX formats are supported')
         st.stop()
 
+    # 构建 prompt
     prompt_lines = [f"**{f}**\n" for f in st.session_state.fields]
     prompt = (
         "Role: You are a professional contract administration assistant tasked with extracting specified fields from the uploaded document.\n\n"
-        + "Please check the uploaded document for the presence of the following fields:<br>"
+        + "Please check the uploaded document for the presence of the following fields:\n\n"
         + "".join(prompt_lines)
-        + "<br>If exist, summarize the corresponding content under each field name. If not, write 'NA' under that field.<br>"
-        + "<Example Output>"
-        + "#### Field Name<br>"
-        + "Field Name Content"
-        + "</Example Output>"
+        + "\nIf exist, summarize the corresponding content under each field name. If not, write 'NA' under that field.\n\n"
+        + "<Example Output>\n\n"
+        + "#### Field Name\n"
+        + "Field Name Content\n\n"
+        + "</Example Output>\n\n"
     )
 
+    # 调用 GenAI
     client = genai.Client(api_key=st.secrets['GOOGLE_GENAI_API_KEY'])
-    with st.spinner("Wait for it...", show_time=True):
+    with st.spinner("Waiting for LLM…", show_time=True):
         try:
             response = client.models.generate_content(
                 model=selected_model,
@@ -146,8 +152,42 @@ if st.session_state.process_extract:
             st.stop()
 
         if getattr(response, "error", None):
-            st.error(f"AI Error: {response.error.message} 1.Try different model. 2.Resources may be insufficient, please email Brian to refuel!")
+            st.error(
+                f"AI Error: {response.error.message} "
+                "Try: 1.Try different model. 2.Resources may be insufficient, email Brian to refuel!"
+            )
             st.stop()
 
-    st.success(response.text)
-    st.balloons()
+    # 构建本次的记录
+    new_record = {
+        "model": selected_model,
+        "fields": st.session_state.fields.copy(),  # 深拷贝当时的字段列表
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "result_text": response.text
+    }
+    # 将新记录 append 到 history
+    st.session_state.history.append(new_record)
+    # 如果长度超过 2，就弹出最早的一条
+    if len(st.session_state.history) > 2:
+        st.session_state.history.pop(0)
+
+    # 提取完成，把 process_extract 复位
+    st.session_state.process_extract = False
+
+# === 展示 history 中最多 2 条结果 ===
+if st.session_state.history:
+    st.markdown('---')
+    st.subheader('Extraction History (Last 2 Results)')
+
+    # 如果有倒数第二条，就先展示它
+    if len(st.session_state.history) == 2:
+        rec = st.session_state.history[0]
+        st.markdown(f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
+        st.markdown(f"Fields: {rec['fields']}")
+        st.text_area("Result ①", rec['result_text'], height=200)
+
+    # 再展示最新的一条
+    latest = st.session_state.history[-1]
+    st.markdown(f"**Latest Result**  •  Timestamp: {latest['timestamp']}  •  Model: `{latest['model']}`")
+    st.markdown(f"Fields: {latest['fields']}")
+    st.text_area("Result ②", latest['result_text'], height=200)
