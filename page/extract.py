@@ -106,7 +106,6 @@ else:
     st.info('No fields added yet. Please add a field to proceed.')
 
 # === Output Style 区块 ===
-st.markdown('---')
 st.subheader('Output Style')
 
 # 1. 让用户选择 Paragraph 或 Bullet Points，加 on_change
