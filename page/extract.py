@@ -124,7 +124,7 @@ if st.session_state.process_extract:
 
     prompt_lines = [f"**{f}**\n" for f in st.session_state.fields]
     prompt = (
-        "Role: You are a professional document content extraction assistant tasked with extracting specified fields from the uploaded document.\n\n"
+        "Role: You are a professional contract administration assistant tasked with extracting specified fields from the uploaded document.\n\n"
         + "Please check the uploaded document for the presence of the following fields:<br>"
         + "".join(prompt_lines)
         + "<br>If exist, summarize the corresponding content under each field name. If not, write 'NA' under that field.<br>"
@@ -150,5 +150,4 @@ if st.session_state.process_extract:
             st.stop()
 
     st.success(response.text)
-    st.markdown(prompt)
     st.balloons()
