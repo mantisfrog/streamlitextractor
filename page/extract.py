@@ -222,7 +222,7 @@ if st.session_state.last_result or st.session_state.prev_result:
     if st.session_state.prev_result:
         rec = st.session_state.prev_result
         st.markdown(
-            f"**Latest Result**  \n(Model: `{rec['model']}`  •  "
+            f"**Previous Result**  \n(Model: `{rec['model']}`  •  "
             f"Style: {rec['output_style']}  •  Max Words: {rec['word_count']})"
         )
         st.success(rec['result_text'])
