@@ -17,6 +17,12 @@ def initialize_states():
     if 'last_result' not in st.session_state:
         # 用来保存最新一次生成的记录（字典）
         st.session_state.last_result = None
+    if 'output_format' not in st.session_state:
+        # “Paragraph” 或 “Bullet Points”
+        st.session_state.output_format = "Paragraph"
+    if 'word_count' not in st.session_state:
+        # 每个字段摘要的最大词数
+        st.session_state.word_count = 100
 
 initialize_states()
 st.title('Contract Agent - Document Content Extraction')
@@ -99,26 +105,31 @@ if st.session_state.fields:
         )
 else:
     st.info('No fields added yet. Please add a field to proceed.')
-st.markdown("---")
-st.subheader("Output Style")
 
-# 1. Let the user choose Paragraph vs. Bullet Points:
+# === Output Style 区块 ===
+st.markdown('---')
+st.subheader('Output Style')
+
+# 1. 让用户选择 Paragraph 或 Bullet Points
 st.radio(
     label="Choose output style:",
     options=["Paragraph", "Bullet Points"],
-    index=0,                # default to Paragraph
+    index=0,                # 默认 Paragraph
     key="output_format"
 )
 
-# 2. One global word‐count cap (applied to every field summary):
+# 2. 全局 word count 上限（每个字段摘要的最大词数）
 st.number_input(
     label="Summary Word Count (max words per field)",
     min_value=0,
     max_value=1000,
-    value=210,
+    value=st.session_state.word_count,
     step=10,
     key="word_count"
 )
+
+st.markdown('---')
+
 # === 点击“GO Extract”时：把 process_extract 置 True ===
 if uploaded_file and st.session_state.fields:
     if st.button('GO Extract'):
@@ -147,17 +158,24 @@ if st.session_state.process_extract:
         st.error('Only PDF or DOCX formats are supported')
         st.stop()
 
-    # 构建 prompt
-    prompt_lines = [f"**{f}**\n" for f in st.session_state.fields]
+    # 构建 prompt 时，调用以下 session_state 值：
+    # - st.session_state["output_format"]  # "Paragraph" or "Bullet Points"
+    # - st.session_state["word_count"]     # 最大词数
+    # 以及 fields、selected_model 等常规信息
+    prompt_lines = [f"**{f}**  (max {st.session_state.word_count} words)\n" for f in st.session_state.fields]
     prompt = (
-        "Role: You are a professional contract administration assistant tasked with extracting specified fields from the uploaded document.\n\n"
-        + "Please check the uploaded document for the presence of the following fields:\n\n"
+        f"Role: You are a professional contract administration assistant tasked with extracting specified fields "
+        f"from the uploaded document.\n\n"
+        f"Output Style: {st.session_state.output_format}\n"
+        f"Each field summary must be at most {st.session_state.word_count} words.\n\n"
+        f"Please check the uploaded document for the presence of the following fields:\n\n"
         + "".join(prompt_lines)
-        + "\nIf exist, summarize(within 100 word count) the corresponding content under each field name. If not, write 'NA' under that field.\n\n"
-        + "<Example Output>\n\n"
-        + "#### Field Name\n"
-        + "Field Name Content\n\n"
-        + "</Example Output>\n\n"
+        + "\nIf present, summarize the corresponding content under each field name "
+        "according to the chosen output style. If not, write 'NA' under that field.\n\n"
+        "<Example Output>\n\n"
+        "#### Field Name\n"
+        "Field Name Content\n\n"
+        "</Example Output>\n\n"
     )
 
     # 调用 GenAI
@@ -187,13 +205,15 @@ if st.session_state.process_extract:
         "model": selected_model,
         "fields": st.session_state.fields.copy(),
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "output_style": st.session_state.output_format,
+        "word_count": st.session_state.word_count,
         "result_text": response.text
     }
 
     # 提取完成后，把 process_extract 复位
     st.session_state.process_extract = False
 
-# === 渲染结果：先展示 last_result，再展示 prev_result，仍然用 st.success 输出 ===
+# === 渲染结果：先展示 last_result（最新一次），再展示 prev_result（上一次），使用 st.success 输出 ===
 if st.session_state.last_result or st.session_state.prev_result:
     st.markdown('---')
     st.subheader('Extraction History (Last 2 Results)')
@@ -201,13 +221,19 @@ if st.session_state.last_result or st.session_state.prev_result:
     # 先显示“最新一次”
     if st.session_state.last_result:
         rec = st.session_state.last_result
-        st.markdown(f"**Latest Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
+        st.markdown(
+            f"**Latest Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`  •  "
+            f"Style: {rec['output_style']}  •  Max Words/Field: {rec['word_count']}"
+        )
         st.markdown(f"Fields: {rec['fields']}")
         st.success(rec['result_text'])
 
     # 再显示“上一次”
     if st.session_state.prev_result:
         rec = st.session_state.prev_result
-        st.markdown(f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
+        st.markdown(
+            f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`  •  "
+            f"Style: {rec['output_style']}  •  Max Words/Field: {rec['word_count']}"
+        )
         st.markdown(f"Fields: {rec['fields']}")
         st.success(rec['result_text'])
