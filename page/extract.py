@@ -11,12 +11,15 @@ def initialize_states():
         st.session_state.fields = []
     if 'process_extract' not in st.session_state:
         st.session_state.process_extract = False
-    if 'history' not in st.session_state:
-        # history: 列表，每个元素结构为 {"model":..., "fields":[...], "timestamp":..., "result_text":...}
-        st.session_state.history = []
+    if 'prev_result' not in st.session_state:
+        # 用来保存倒数第二次的结果字典
+        st.session_state.prev_result = None
+    if 'last_result' not in st.session_state:
+        # 用来保存最新一次的结果字典
+        st.session_state.last_result = None
 
 initialize_states()
-st.title('Contract Agent - Document Content Extraction (方案 1)')
+st.title('Contract Agent - Document Content Extraction (方案 2)')
 
 # === 统一的“重置 process_extract”函数 ===
 def reset_extract():
@@ -37,8 +40,8 @@ mode = st.select_slider(
     "Select model performance tier",
     options=list(model_mapping.keys()),
     value="Default",
-    key="mode",           # 滑块的键
-    on_change=reset_extract  # 滑动时只重置 process_extract，不影响 history
+    key="mode",
+    on_change=reset_extract  # 滑块改变时只重置 process_extract，不影响 prev/last
 )
 selected_model = model_mapping[mode]
 desc = mode_description[mode]
@@ -49,8 +52,8 @@ st.subheader('Upload a Document (PDF or DOCX)')
 uploaded_file = st.file_uploader(
     'Upload one document at a time',
     type=['pdf', 'docx'],
-    key='uploaded_file',    # file_uploader 自行创建这个键
-    on_change=reset_extract # 上传/删除文件时只重置 process_extract，不动 history
+    key='uploaded_file',
+    on_change=reset_extract  # 上传/删除文件时只重置 process_extract，不影响 prev/last
 )
 
 # === 新增字段的回调函数 ===
@@ -67,12 +70,12 @@ def add_field():
         return
     st.session_state.fields.append(new_field)
     st.session_state['new_field_input'] = ''
-    reset_extract()  # 只把 process_extract 置 False，不清空 history
+    reset_extract()  # 只把 process_extract 置 False，不影响 prev/last
 
 # === 删除字段的回调函数 ===
 def delete_field(idx):
     st.session_state.fields.pop(idx)
-    reset_extract()  # 只把 process_extract 置 False，不清空 history
+    reset_extract()  # 只把 process_extract 置 False，不影响 prev/last
 
 # === 添加字段表单 ===
 with st.form('add_form', clear_on_submit=True):
@@ -97,14 +100,13 @@ if st.session_state.fields:
 else:
     st.info('No fields added yet. Please add a field to proceed.')
 
-# === 点击“GO Extract”时：把 process_extract 置 True（不清空 history） ===
+# === 点击“GO Extract”时：把 process_extract 置 True（不清空 prev/last） ===
 if uploaded_file and st.session_state.fields:
     st.markdown('---')
     if st.button('GO Extract'):
-        # 只把 process_extract 置 True，实际调用放到下面
         st.session_state.process_extract = True
 
-# === 如果 process_extract=True，就调用 LLM 并把结果 push 到 history；然后清除标志 ===
+# === 如果 process_extract=True，就调用 LLM；先把 last 推到 prev，再把本次写到 last ===
 if st.session_state.process_extract:
     st.markdown('---')
     st.subheader('Running Extraction…')
@@ -158,36 +160,35 @@ if st.session_state.process_extract:
             )
             st.stop()
 
-    # 构建本次的记录
-    new_record = {
+    # 先把当前的 last_result 推到 prev_result
+    st.session_state.prev_result = st.session_state.last_result
+
+    # 再把本次的内容写到 last_result
+    st.session_state.last_result = {
         "model": selected_model,
-        "fields": st.session_state.fields.copy(),  # 深拷贝当时的字段列表
+        "fields": st.session_state.fields.copy(),
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "result_text": response.text
     }
-    # 将新记录 append 到 history
-    st.session_state.history.append(new_record)
-    # 如果长度超过 2，就弹出最早的一条
-    if len(st.session_state.history) > 2:
-        st.session_state.history.pop(0)
 
-    # 提取完成，把 process_extract 复位
+    # 完成后禁用提取标志
     st.session_state.process_extract = False
 
-# === 展示 history 中最多 2 条结果 ===
-if st.session_state.history:
+# === 渲染 prev_result 与 last_result ===
+if st.session_state.prev_result or st.session_state.last_result:
     st.markdown('---')
     st.subheader('Extraction History (Last 2 Results)')
 
-    # 如果有倒数第二条，就先展示它
-    if len(st.session_state.history) == 2:
-        rec = st.session_state.history[0]
+    # 如果有 prev_result，就先展示这一条
+    if st.session_state.prev_result:
+        rec = st.session_state.prev_result
         st.markdown(f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
         st.markdown(f"Fields: {rec['fields']}")
         st.text_area("Result ①", rec['result_text'], height=200)
 
-    # 再展示最新的一条
-    latest = st.session_state.history[-1]
-    st.markdown(f"**Latest Result**  •  Timestamp: {latest['timestamp']}  •  Model: `{latest['model']}`")
-    st.markdown(f"Fields: {latest['fields']}")
-    st.text_area("Result ②", latest['result_text'], height=200)
+    # 如果有 last_result，就再展示最新的一条
+    if st.session_state.last_result:
+        rec = st.session_state.last_result
+        st.markdown(f"**Latest Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
+        st.markdown(f"Fields: {rec['fields']}")
+        st.text_area("Result ②", rec['result_text'], height=200)
