@@ -48,10 +48,11 @@ mode = st.select_slider(
     value="Default",
     key="mode",
     on_change=reset_extract  # 滑块移动时只重置 process_extract，不动 prev/last
+    label_visibility="hidden"
 )
 selected_model = model_mapping[mode]
 desc = mode_description[mode]
-st.write(f"Using model: `{selected_model}`, {desc}")
+st.write(f"`{selected_model}`, {desc}")
 
 # === 文档上传 ===
 st.subheader('Upload a Document (PDF or DOCX)')
@@ -60,6 +61,7 @@ uploaded_file = st.file_uploader(
     type=['pdf', 'docx'],
     key='uploaded_file',
     on_change=reset_extract  # 上传/删除文件时只重置 process_extract，不动 prev/last
+    label_visibility='hidden'
 )
 
 # === 新增字段的回调函数 ===
@@ -86,7 +88,7 @@ def delete_field(idx):
 # === 添加字段表单 ===
 with st.form('add_form', clear_on_submit=True):
     st.subheader('Add Field for Extraction')
-    st.text_input('Field Name', key='new_field_input')
+    st.text_input('Field Name', key='new_field_input', label_visibility='hidden')
     st.form_submit_button('Add', on_click=add_field)
 
 st.markdown('---')
@@ -117,6 +119,7 @@ st.radio(
     index=0,                # 默认 Paragraph
     key="output_format",
     on_change=reset_extract
+    label_visibility='hidden'  # 隐藏标签文本
 )
 
 # 2. 全局 word count 上限（每个字段摘要的最大词数），也加 on_change
@@ -201,7 +204,6 @@ if st.session_state.process_extract:
     st.session_state.last_result = {
         "model": selected_model,
         "fields": st.session_state.fields.copy(),
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "output_style": st.session_state.output_format,
         "word_count": st.session_state.word_count,
         "result_text": response.text
@@ -219,18 +221,16 @@ if st.session_state.last_result or st.session_state.prev_result:
     if st.session_state.last_result:
         rec = st.session_state.last_result
         st.markdown(
-            f"**Latest Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`  •  "
-            f"Style: {rec['output_style']}  •  Max Words: {rec['word_count']}"
+            f"**Latest Result**  \n(Model: `{rec['model']}`  •  "
+            f"Style: {rec['output_style']}  •  Max Words: {rec['word_count']})"
         )
-        st.markdown(f"Fields: {rec['fields']}")
         st.success(rec['result_text'])
 
     # 再显示“上一次”
     if st.session_state.prev_result:
         rec = st.session_state.prev_result
         st.markdown(
-            f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`  •  "
-            f"Style: {rec['output_style']}  •  Max Words/Field: {rec['word_count']}"
+            f"**Latest Result**  \n(Model: `{rec['model']}`  •  "
+            f"Style: {rec['output_style']}  •  Max Words: {rec['word_count']})"
         )
-        st.markdown(f"Fields: {rec['fields']}")
         st.success(rec['result_text'])
