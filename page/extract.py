@@ -164,20 +164,19 @@ if st.session_state.process_extract:
     # 以及 fields、selected_model 等常规信息
     prompt_lines = [f"**{f}**  (max {st.session_state.word_count} words)\n" for f in st.session_state.fields]
     prompt = (
-        f"Role: You are a professional contract administration assistant tasked with extracting specified fields "
-        f"from the uploaded document.\n\n"
-        f"Output Style: {st.session_state.output_format}\n"
-        f"Each field summary must be at most {st.session_state.word_count} words.\n\n"
-        f"Please check the uploaded document for the presence of the following fields:\n\n"
-        + "".join(prompt_lines)
-        + "\nIf present, summarize the corresponding content under each field name "
-        "according to the chosen output style. If not, write 'NA' under that field.\n\n"
-        "<Example Output>\n\n"
-        "#### Field Name\n"
-        "Field Name Content\n\n"
-        "</Example Output>\n\n"
-    )
-
+    f"Role: You are a professional contract administration assistant tasked with extracting specified fields "
+    f"from the uploaded document.\n\n"
+    f"Please check the uploaded document for the presence of the following fields:\n\n"
+    f"{''.join(prompt_lines)}\n"
+    f"If present, summarize the corresponding content under each field name "
+    f"according to the chosen output style. If not, write 'NA' under that field.\n\n"
+    f"Summary Format: {st.session_state.output_format}\n\n"
+    f"Word Count of Each 'Field Name Summary': {st.session_state.word_count} words.\n\n"
+    "<Example Output>\n\n"
+    "#### Field Name\n"
+    "Field Name Summary\n\n"
+    "</Example Output>\n\n"
+)
     # 调用 GenAI
     client = genai.Client(api_key=st.secrets['GOOGLE_GENAI_API_KEY'])
     with st.spinner("Waiting for LLM…", show_time=True):
