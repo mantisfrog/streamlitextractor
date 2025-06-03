@@ -83,15 +83,12 @@ def add_field():
 def delete_field(idx):
     st.session_state.fields.pop(idx)
     reset_extract()  # 只把 process_extract 置为 False，不清空 prev/last
-st.markdown('---')
 
 # === 添加字段表单 ===
 with st.form('add_form', clear_on_submit=True):
     st.subheader('Add Field Name')
     st.text_input('Build your template', key='new_field_input')
     st.form_submit_button('Add', on_click=add_field)
-
-st.markdown('---')
 
 # === 显示当前已选字段 ===
 st.subheader('Selected Fields')
