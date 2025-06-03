@@ -226,7 +226,8 @@ if st.session_state.last_result or st.session_state.prev_result:
             f"Style: {rec['output_style']}  •  Max Words/Field: {rec['word_count']}"
         )
         st.markdown(f"Fields: {rec['fields']}")
-        st.success(rec['result_text'])
+        # st.success(rec['result_text'])
+        st.markdown(prompt)
 
     # 再显示“上一次”
     if st.session_state.prev_result:
@@ -236,4 +237,5 @@ if st.session_state.last_result or st.session_state.prev_result:
             f"Style: {rec['output_style']}  •  Max Words/Field: {rec['word_count']}"
         )
         st.markdown(f"Fields: {rec['fields']}")
-        st.success(rec['result_text'])
+        # st.success(rec['result_text'])
+        st.markdown(prompt)
