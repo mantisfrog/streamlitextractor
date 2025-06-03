@@ -4,23 +4,21 @@ from google.genai import types
 from io import BytesIO
 from docx import Document  # pip install python-docx
 
-# Initialize the list of fields
+# === 初始化 session_state ===
 def initialize_states():
     if 'fields' not in st.session_state:
         st.session_state.fields = []
     if 'process_extract' not in st.session_state:
         st.session_state.process_extract = False
+    if 'uploaded_file' not in st.session_state:
+        st.session_state.uploaded_file = None
 
 initialize_states()
+st.title('Contract Agent - Document Content Extraction')
 
-st.title('Document Field Template Designer and Content Extractor')
-
-# === Retrieve API Key from Streamlit secrets ===
-try:
-    api_key = st.secrets['GOOGLE_GENAI_API_KEY']
-except KeyError:
-    st.error('API key not found. Please add GOOGLE_GENAI_API_KEY to .streamlit/secrets.toml or the Streamlit Cloud secrets.')
-    st.stop()
+# === 统一的“重置提取状态”函数 ===
+def reset_extract():
+    st.session_state.process_extract = False
 
 # === Model Selection ===
 model_mapping = {
@@ -30,24 +28,30 @@ model_mapping = {
 }
 mode_description = {
     "Efficiency": "Free model, supports up to 32 pages",
-    "Default": "Balanced performance and cost, 1× token cost",
-    "Best Performance": "Complex reasoning tasks, 15× token cost"
+    "Default": "Balanced cost and performance model, 1X token cost",
+    "Best Performance": "Complex reasoning model, 15X token cost"
 }
 mode = st.select_slider(
     "Select model performance tier",
     options=list(model_mapping.keys()),
-    value="Default"
+    value="Default",
+    key="mode",
+    on_change=reset_extract      # 滑块一旦改变，调用 reset_extract()
 )
 selected_model = model_mapping[mode]
 desc = mode_description[mode]
-st.write(f"Current tier: {mode}")
 st.write(f"Using model: `{selected_model}`, {desc}")
 
-# === Document Upload ===
+# === 文档上传 ===
 st.subheader('Upload a Document (PDF or DOCX)')
-uploaded_file = st.file_uploader('Upload one document at a time', type=['pdf', 'docx'])
+uploaded_file = st.file_uploader(
+    'Upload one document at a time',
+    type=['pdf', 'docx'],
+    key='uploaded_file',
+    on_change=reset_extract      # 上传/删除文件时，调用 reset_extract()
+)
 
-# === Callback to add a new field ===
+# === 新增字段的回调函数 ===
 def add_field():
     new_field = st.session_state.get('new_field_input', '').strip()
     if not new_field:
@@ -59,14 +63,14 @@ def add_field():
     else:
         st.session_state.fields.append(new_field)
         st.session_state['new_field_input'] = ''
-        st.session_state.process_extract = False
-# === delete function ===
+        reset_extract()  # 调用统一的重置函数
+
+# === 删除字段的回调函数 ===
 def delete_field(idx):
-    # 删除对应索引的字段
     st.session_state.fields.pop(idx)
-    # 重置提取标志，避免误触
-    st.session_state.process_extract = False
-# === Form to add a new field template ===
+    reset_extract()      # 调用统一的重置函数
+
+# === 添加字段的表单 ===
 with st.form('add_form', clear_on_submit=True):
     st.subheader('Add Field for Extraction')
     st.text_input('Field Name', key='new_field_input')
@@ -74,8 +78,8 @@ with st.form('add_form', clear_on_submit=True):
 
 st.markdown('---')
 
-# === Display current field templates ===
-st.subheader('Current Field Templates')
+# === 显示当前已选字段 ===
+st.subheader('Selected Fields')
 if st.session_state.fields:
     for idx, field in enumerate(st.session_state.fields, start=1):
         cols = st.columns([4, 1])
@@ -84,57 +88,54 @@ if st.session_state.fields:
             'Delete',
             key=f'delete_{idx}',
             on_click=delete_field,
-            args=(idx-1,)
+            args=(idx - 1,)
         )
 else:
     st.info('No fields added yet. Please add a field to proceed.')
 
-# === Confirmation button to start extraction ===
+# === 点击“GO Extract”时设置 process_extract 为 True ===
 if uploaded_file and st.session_state.fields:
     st.markdown('---')
-    if st.button('Confirm and Extract'):
+    if st.button('GO Extract'):
         st.session_state.process_extract = True
 
-# === Extract and display results ===
+# === 调用 LLM 并展示结果 ===
 if st.session_state.process_extract:
     st.markdown('---')
     st.subheader('Extraction Results')
 
-    file_bytes = uploaded_file.read()
-    file_name = uploaded_file.name.lower()
+    file_bytes = st.session_state.uploaded_file.read()
+    file_name = st.session_state.uploaded_file.name.lower()
 
-    # 1️⃣ Prepare document content
+    # 根据后缀处理 PDF 或 DOCX
     if file_name.endswith('.pdf'):
-        # Use PDF bytes directly
         doc_part = types.Part.from_bytes(
             data=file_bytes,
             mime_type='application/pdf'
         )
     elif file_name.endswith('.docx'):
-        # Extract text from DOCX
         doc = Document(BytesIO(file_bytes))
         text = '\n'.join(p.text for p in doc.paragraphs)
-        doc_part = text  # Provide text directly to the model
+        doc_part = text
     else:
         st.error('Only PDF or DOCX formats are supported')
         st.stop()
 
-    # 2️⃣ Build the prompt for the model
+    # 拼接 prompt
     prompt_lines = [f"**{f}**\n" for f in st.session_state.fields]
     prompt = (
         "Role: You are a professional document content extraction assistant tasked with extracting specified fields from the uploaded document.\n\n"
         + "Please check the uploaded document for the presence of the following fields:\n\n"
         + "".join(prompt_lines)
-        + "\nIf present, summarize the corresponding content under each field. If not, write 'NA' under that field.\n"
-        + "\n\n<Example Output>\n\n"
+        + "\nIf present, summarize the corresponding content under each field. If not, write 'NA' under that field.\n\n"
+        + "<Example Output>\n\n"
         + "#### Field Name\n"
         + "Field Name Content\n\n"
         + "</Example Output>\n\n"
     )
 
-    # 3️⃣ Call the GenAI model
-    client = genai.Client(api_key=api_key)
-
+    # 调用 GenAI
+    client = genai.Client(api_key=st.secrets['GOOGLE_GENAI_API_KEY'])
     with st.spinner("Wait for it...", show_time=True):
         try:
             response = client.models.generate_content(
@@ -148,7 +149,6 @@ if st.session_state.process_extract:
         if getattr(response, "error", None):
             st.error(f"AI Error: {response.error.message} 1.Try different model. 2.Resources may be insufficient, please email Brian to refuel!")
             st.stop()
-    # Display the model output
-    st.divider()
+
     st.success(response.text)
     st.balloons()
