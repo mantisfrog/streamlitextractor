@@ -150,5 +150,5 @@ if st.session_state.process_extract:
             st.stop()
 
     st.success(response.text)
-    st.text(prompt)
+    st.markdown(prompt)
     st.balloons()
