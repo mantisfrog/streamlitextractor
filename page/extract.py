@@ -12,10 +12,10 @@ def initialize_states():
     if 'process_extract' not in st.session_state:
         st.session_state.process_extract = False
     if 'prev_result' not in st.session_state:
-        # 用来保存倒数第二次的结果字典
+        # 用来保存倒数第二次生成的记录（字典）
         st.session_state.prev_result = None
     if 'last_result' not in st.session_state:
-        # 用来保存最新一次的结果字典
+        # 用来保存最新一次生成的记录（字典）
         st.session_state.last_result = None
 
 initialize_states()
@@ -41,7 +41,7 @@ mode = st.select_slider(
     options=list(model_mapping.keys()),
     value="Default",
     key="mode",
-    on_change=reset_extract  # 滑块改变时只重置 process_extract，不影响 prev/last
+    on_change=reset_extract  # 滑动时只重置 process_extract，不清空 prev/last
 )
 selected_model = model_mapping[mode]
 desc = mode_description[mode]
@@ -53,7 +53,7 @@ uploaded_file = st.file_uploader(
     'Upload one document at a time',
     type=['pdf', 'docx'],
     key='uploaded_file',
-    on_change=reset_extract  # 上传/删除文件时只重置 process_extract，不影响 prev/last
+    on_change=reset_extract  # 上传/删除文件时只重置 process_extract，不动 prev/last
 )
 
 # === 新增字段的回调函数 ===
@@ -70,12 +70,12 @@ def add_field():
         return
     st.session_state.fields.append(new_field)
     st.session_state['new_field_input'] = ''
-    reset_extract()  # 只把 process_extract 置 False，不影响 prev/last
+    reset_extract()  # 只把 process_extract 置为 False，不清空 prev/last
 
 # === 删除字段的回调函数 ===
 def delete_field(idx):
     st.session_state.fields.pop(idx)
-    reset_extract()  # 只把 process_extract 置 False，不影响 prev/last
+    reset_extract()  # 只把 process_extract 置为 False，不清空 prev/last
 
 # === 添加字段表单 ===
 with st.form('add_form', clear_on_submit=True):
@@ -100,7 +100,7 @@ if st.session_state.fields:
 else:
     st.info('No fields added yet. Please add a field to proceed.')
 
-# === 点击“GO Extract”时：把 process_extract 置 True（不清空 prev/last） ===
+# === 点击“GO Extract”时：把 process_extract 置 True ===
 if uploaded_file and st.session_state.fields:
     st.markdown('---')
     if st.button('GO Extract'):
@@ -171,24 +171,29 @@ if st.session_state.process_extract:
         "result_text": response.text
     }
 
-    # 完成后禁用提取标志
+    # 提取完成后，把 process_extract 复位
     st.session_state.process_extract = False
 
-# === 渲染 prev_result 与 last_result ===
+# === 渲染 prev_result 与 last_result （仍然用 st.success 输出） ===
 if st.session_state.prev_result or st.session_state.last_result:
     st.markdown('---')
     st.subheader('Extraction History (Last 2 Results)')
 
-    # 如果有 prev_result，就先展示这一条
+    # 如果有 prev_result，就先用 st.success 显示它
     if st.session_state.prev_result:
         rec = st.session_state.prev_result
-        st.markdown(f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
+        st.markdown(
+            f"**Previous Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`"
+        )
         st.markdown(f"Fields: {rec['fields']}")
-        st.text_area("Result ①", rec['result_text'], height=200)
+        # 这里仍使用 st.success 来展示上一次的纯文本输出
+        st.success(rec['result_text'])
 
-    # 如果有 last_result，就再展示最新的一条
+    # 再用 st.success 显示最新的一条
     if st.session_state.last_result:
         rec = st.session_state.last_result
-        st.markdown(f"**Latest Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`")
+        st.markdown(
+            f"**Latest Result**  •  Timestamp: {rec['timestamp']}  •  Model: `{rec['model']}`"
+        )
         st.markdown(f"Fields: {rec['fields']}")
-        st.text_area("Result ②", rec['result_text'], height=200)
+        st.success(rec['result_text'])
