@@ -35,7 +35,7 @@ def reset_extract():
 model_mapping = {
     "Efficiency": "gemma-3-27b-it",
     "Default": "gemini-2.5-flash-preview-05-20",
-    "Best Performance": "gemini-2.5-pro-preview-05-06"
+    "Best Performance": "gemini-2.5-pro-preview-06-05"
 }
 mode_description = {
     "Efficiency": "Free model, supports up to 32 pages",
